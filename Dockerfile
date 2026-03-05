@@ -1,13 +1,21 @@
-FROM golang:1.22
+FROM golang:1.22-alpine AS builder
 
-RUN apt-get update && apt-get install -y vim less man-db wget telnet curl net-tools iputils-ping htop dnsutils strace
+RUN apk add --no-cache git
 
 WORKDIR /app
 
-COPY . .
+COPY go.mod go.sum ./
+RUN go mod download
 
-RUN go mod tidy
-RUN go build -o server .
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o server .
+
+FROM alpine:3.19
+
+RUN apk add --no-cache ca-certificates
+
+WORKDIR /app
+COPY --from=builder /app/server .
 
 EXPOSE 8080
 
